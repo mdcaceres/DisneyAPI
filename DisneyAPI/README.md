@@ -1,8 +1,4 @@
-﻿namespace DisneyAPI
-{
-    public class README
-    {
-       
+﻿
         #DISNEY BACKEND API CHALLENGE 🚀
 
         ###Built with
@@ -52,5 +48,3 @@
        6          Sci-fi
        7          Fantasy
     
-    }
-}
