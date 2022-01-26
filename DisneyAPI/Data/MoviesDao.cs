@@ -126,8 +126,8 @@ namespace DisneyAPI.Data
                 Movie movie = new Movie();
                 movie.Id = Convert.ToInt32(dt[0]);
                 movie.Title = dt[1].ToString();
-                movie.Rating = Convert.ToInt32(dt[2]);
-                movie.Date = Convert.ToDateTime(dt[3]);
+                movie.Date = Convert.ToDateTime(dt[2]);
+                movie.Rating = Convert.ToInt32(dt[3]);
                 movie.ImgUrl = dt[4].ToString();
                 lst.Add(movie);
             }

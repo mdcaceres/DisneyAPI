@@ -251,7 +251,7 @@ GO
 create proc SP_MoviesByCharacter
 @id int = null
 as
-select m.idMovie,m.Title,m.imgUrl from MovieCharacters mc join movies m on mc.idMovie = m.idMovie
+select m.idMovie,m.Title,m.ReleaseD,m.rating,m.imgUrl from MovieCharacters mc join movies m on mc.idMovie = m.idMovie
 where mc.idCharacter = @id
 
 go 

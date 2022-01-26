@@ -14,6 +14,7 @@ namespace DisneyAPI.Controllers
     public class CharactersController : ControllerBase
     {
         private IApp<Character> app;
+        private MoviesService movieService;
         private Dictionary<string, object> filter;
         public CharactersController()
         {
@@ -37,17 +38,30 @@ namespace DisneyAPI.Controllers
         public async Task<ActionResult> GetCharactersDet()
         {
             var lst = await app.GetAllAsync();
-            var characters = lst.Select(item => new CharacterDetailsDto
-            {
-                Id = item.Id,
-                Name = item.Name,
-                Age = item.Age,
-                Weight = item.Weight,
-                Story = item.Story,
-                ImgUrl = item.ImgUrl,
-                //Movies = new List<MovieDto>() { }
-            }); 
+            movieService = new MoviesService(new Factory());
+            List<CharacterDetailsDto> characters = new List<CharacterDetailsDto>();
 
+            foreach (var item in lst)
+            {
+                CharacterDetailsDto cdet = new CharacterDetailsDto();
+                cdet.Id = item.Id;
+                cdet.Name = item.Name;
+                cdet.Age = item.Age;
+                cdet.Weight = item.Weight;
+                cdet.Story = item.Story;
+                cdet.ImgUrl = item.ImgUrl;
+                cdet.Movies = new List<MovieDto>();
+                var movieLst = await movieService.GetByCharacterIdAsync(cdet.Id);
+                foreach (var movie in movieLst)
+                {
+                    MovieDto movieDto = new MovieDto();
+                    movieDto.Title = movie.Title;
+                    movieDto.Date = movie.Date;
+                    movieDto.ImgUrl = movie.ImgUrl;
+                    cdet.Movies.Add(movieDto);
+                }
+                characters.Add(cdet);
+            }
             return Ok(characters);
         }
 

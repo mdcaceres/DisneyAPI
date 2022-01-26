@@ -46,7 +46,13 @@ namespace DisneyAPI.Services
             return await MovieDao.UpdateAsync("sp_UpdateMovie", parameters); 
         }
 
-        public Task<IEnumerable<Movie>> GetByValueAsync(string key,object value)
+
+        public async Task<IEnumerable<Movie>> GetByCharacterIdAsync(object value)
+        {
+           return await MovieDao.GetByFilterAsync("SP_MoviesByCharacter", "@id", value); 
+        }
+
+        public Task<IEnumerable<Movie>> GetByValueAsync(string key, object value)
         {
             throw new System.NotImplementedException();
         }
