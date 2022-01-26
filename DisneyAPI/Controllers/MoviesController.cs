@@ -5,51 +5,58 @@ using DisneyAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DisneyAPI.Controllers
 {
-    [Route("DisneyAPI/[Controller]")]
-    [ApiController]
+   [Route("DisneyAPI/[Controller]")]
+   [ApiController]
     public class MoviesController : ControllerBase
     {
-        private IApp app;
+        private IApp<Movie> app;
+        //private IApp<Character> characterService;
+        private CharactersService characterService; 
+        private GendersService genderService;
 
         public MoviesController()
         {
-            app = new App(new Factory());
+            app = new MoviesService(new Factory());
         }
 
         [HttpGet]
-        public ActionResult GetMovies()
+        public async Task<ActionResult> GetMovies()
         {
-            var lst = app.ListAllMovies().Select(item => new MovieDto
+            var lst = await app.GetAllAsync();
+            var movies = lst.Select(item => new MovieDto
             {
                 Title = item.Title,
                 Date = item.Date,
                 ImgUrl = item.ImgUrl,
             });
-            return Ok(lst);
+            return Ok(movies);
         }
 
         [HttpGet("Details")]
-        public ActionResult GetMoviesDet()
+        public async Task<ActionResult> GetMoviesDet()
         {
-            List<MovieDetailsDto> moviesDet = new List<MovieDetailsDto>();  
-            var lst = app.ListAllMovies();
+            List<MovieDetailsDto> moviesDet = new List<MovieDetailsDto>();
+            var lst = await app.GetAllAsync();
             foreach (var item in lst)
             {
                 var movie = new MovieDetailsDto();
                 movie.Id = item.Id;
                 movie.Title = item.Title;
                 movie.Date = item.Date;
-                movie.Rating = item.Rating; 
+                movie.Rating = item.Rating;
                 movie.ImgUrl = item.ImgUrl;
                 movie.Date = item.Date;
-                movie.Characters = new List<CharacterDto>(); 
+                movie.Characters = new List<CharacterDto>();
                 movie.Genders = new List<GenderDto>();
-                var characters = app.GetCharactersByMovie(item.Id);
-                var genders = app.GetMovieGenders(item.Id);
-                foreach (var cter in characters) 
+                characterService = new CharactersService(new Factory()); 
+                var characters = await characterService.GetByMovieIdAsync(movie.Id);
+                genderService = new GendersService(new Factory()); 
+                var genders = await genderService.GetByMovieIdAsync(item.Id);
+                foreach (var cter in characters)
                 {
                     CharacterDto cd = new CharacterDto();
                     cd.Name = cter.Name;
@@ -58,9 +65,8 @@ namespace DisneyAPI.Controllers
                 }
                 foreach (var gender in genders)
                 {
-                    GenderDto genderDto = new GenderDto(gender.Id,gender.Name);
+                    GenderDto genderDto = new GenderDto(gender.Id, gender.Name);
                     movie.Genders.Add(genderDto);
-
                 }
                 moviesDet.Add(movie);
             }
@@ -68,49 +74,52 @@ namespace DisneyAPI.Controllers
         }
 
         [HttpGet("title={title}")]
-        public ActionResult GetByName(string title)
+        public async Task<ActionResult> GetByName(string title)
         {
             Dictionary<string, object> filter = new Dictionary<string, object>();
             filter.Add("@title", title);
-            var lst = app.FilterMovies(filter).Select(item => new MovieDto
+            var lst = await app.FilterAsync(filter);
+            var movies = lst.Select(item => new MovieDto
             {
                 Title = item.Title,
                 Date = item.Date,
                 ImgUrl = item.ImgUrl,
             });
-            return Ok(lst);
+            return Ok(movies);
         }
 
         [HttpGet("gender={idGender}")]
-        public ActionResult GetByGender(int idGender)
+        public async Task<ActionResult> GetByGender(int idGender)
         {
             Dictionary<string, object> filter = new Dictionary<string, object>();
             filter.Add("@gender", idGender);
-            var lst = app.FilterMovies(filter).Select(item => new MovieDto
+            var lst = await app.FilterAsync(filter);
+            var movies = lst.Select(item => new MovieDto
             {
                 Title = item.Title,
                 Date = item.Date,
                 ImgUrl = item.ImgUrl,
             });
-            return Ok(lst);
+            return Ok(movies);
         }
 
         [HttpGet("orderBy={order}")]
-        public ActionResult GetByOrder(string order)
+        public async Task<ActionResult> GetByOrder(string order)
         {
             Dictionary<string, object> filter = new Dictionary<string, object>();
             filter.Add("@order", order);
-            var lst = app.FilterMovies(filter).Select(item => new MovieDto
+            var lst = await app.FilterAsync(filter);
+            var movies = lst.Select(item => new MovieDto
             {
                 Title = item.Title,
                 Date = item.Date,
                 ImgUrl = item.ImgUrl,
             });
-            return Ok(lst);
+            return Ok(movies);
         }
 
         [HttpPost("Create")]
-        public ActionResult CreateMovie(CreateMovieDto movieDto)
+        public async Task<ActionResult> CreateMovie(CreateMovieDto movieDto)
         {
             Movie m = new Movie();
             m.Title = movieDto.Title;
@@ -132,26 +141,27 @@ namespace DisneyAPI.Controllers
                 m.Genders.Add(g);
             }
 
-            app.CreateMovie(m);
-            return CreatedAtAction(nameof(GetMovies),movieDto); 
+            await app.CreateAsync(m);
+            return CreatedAtAction(nameof(GetMovies), movieDto);
         }
 
         [HttpPut("Update")]
-        public IActionResult UpdateMovie(int id, UpdateMovieDto updatedMovie)
+        public async Task<IActionResult> UpdateMovie(int id, UpdateMovieDto updatedMovie)
         {
-            Movie m = new Movie(); 
+            Movie m = new Movie();
+            m.Id = id;
             m.Title = updatedMovie.Title;
             m.Date = updatedMovie.Date;
             m.Rating = updatedMovie.Rating;
             m.ImgUrl = updatedMovie.ImgUrl;
-            app.UpdateMovie(id, m);
+            await app.UpdateAsync(m);
             return Ok("successful update");
         }
 
         [HttpDelete("Delete")]
-        public IActionResult DeleteMovie(int id) 
+        public async Task<IActionResult> DeleteMovie(int id)
         {
-            app.DeleteMovie(id);
+            await app.DeleteAsync(id);
             return Ok("deleted movie");
         }
     }

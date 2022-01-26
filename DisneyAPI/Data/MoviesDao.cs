@@ -3,204 +3,140 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DisneyAPI.Data
 {
     public class MoviesDao : IDao<Movie>
     {
         private SqlRepo sqlDao;
-
+        private List<Movie> lst;
+        SqlTransaction transact = null;
         public MoviesDao()
         {
             sqlDao = SqlRepo.GetDao();
+            lst = new List<Movie>();
         }
 
-        public IEnumerable<Movie> GetAll(string commandText)
+        public async Task CreateCharactersAndGenders(int id,List<Character> characters, List<Gender> genders, SqlTransaction transact) 
         {
-            DataTable dt = sqlDao.GetAll(commandText);
-            List<Movie> lst = new List<Movie>();
-            for (int i = 0; i < dt.Rows.Count; i++)
+            foreach (Character c in characters)
             {
-                Movie m = new Movie();
-                m.Id = Convert.ToInt32(dt.Rows[i][0]);
-                m.Title = dt.Rows[i][1].ToString();
-                m.Date = Convert.ToDateTime(dt.Rows[i][2]);
-                m.Rating = Convert.ToInt32(dt.Rows[i][3]);
-                //m.IdGender = Convert.ToInt32(dt.Rows[i][4]);
-                m.ImgUrl = dt.Rows[i][4].ToString();
-                lst.Add(m);
+                sqlDao.Command.Parameters.Clear();
+                sqlDao.Command.CommandText = "sp_addCharactersToMovie";
+                sqlDao.Command.CommandType = CommandType.StoredProcedure;
+                sqlDao.Command.Transaction = transact;
+                sqlDao.Command.Parameters.AddWithValue("@idMovie", id);
+                sqlDao.Command.Parameters.AddWithValue("@idCharacter", c.Id);
+                await sqlDao.Command.ExecuteNonQueryAsync();
             }
-            return lst;
+            foreach (Gender g in genders)
+            {
+                sqlDao.Command.Parameters.Clear();
+                sqlDao.Command.CommandText = "sp_addMovieGenders";
+                sqlDao.Command.CommandType = CommandType.StoredProcedure;
+                sqlDao.Command.Transaction = transact;
+                sqlDao.Command.Parameters.AddWithValue("@idMovie", id);
+                sqlDao.Command.Parameters.AddWithValue("@idGender", g.Id);
+                await sqlDao.Command.ExecuteNonQueryAsync();
+            }
         }
 
-        public IEnumerable<Movie> GetByFilter(string commandText, Dictionary<string, object> parameters)
-        {
-            DataTable dt = sqlDao.GetByFilter(commandText, parameters);
-            List<Movie> lst = new List<Movie>();
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                Movie m = new Movie();
-                m.Id = Convert.ToInt32(dt.Rows[i][0]);
-                m.Title = dt.Rows[i][1].ToString();
-                m.Date = Convert.ToDateTime(dt.Rows[i][2]);
-                m.Rating = Convert.ToInt32(dt.Rows[i][3]);
-                //m.IdGender = Convert.ToInt32(dt.Rows[i][4]);
-                m.ImgUrl = dt.Rows[i][4].ToString();
-                lst.Add(m);
-            }
-            return lst;
-        }
-
-        public IEnumerable<Movie> GetByFilter(string commandText, string param, object value)
-        {
-            DataTable dt = sqlDao.GetByFilter(commandText,param,value);
-            List<Movie> lst = new List<Movie>();
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                Movie m = new Movie();
-                m.Id = Convert.ToInt32(dt.Rows[i][0]);
-                m.Title = dt.Rows[i][1].ToString();
-                m.ImgUrl = dt.Rows[i][2].ToString();
-                lst.Add(m);
-            }
-            return lst;
-        }
-
-        public bool Create(Movie movie) 
+        public async Task<bool> CreateAsync(Movie entity)
         {
             SqlTransaction transact = null;
             bool flag = false;
             try
             {
-                sqlDao.OpenConn();
-
-                transact = sqlDao.Conn.BeginTransaction(); 
+                sqlDao.Conn.Open();
+                transact = sqlDao.Conn.BeginTransaction();
                 sqlDao.Command = sqlDao.Conn.CreateCommand();
                 sqlDao.Command.CommandType = CommandType.StoredProcedure;
                 sqlDao.Command.CommandText = "sp_createMovie";
                 sqlDao.Command.Transaction = transact;
 
-                sqlDao.Command.Parameters.AddWithValue("@title", movie.Title);
-                sqlDao.Command.Parameters.AddWithValue("@date", movie.Date);
-                sqlDao.Command.Parameters.AddWithValue("@rating", movie.Rating);
-                sqlDao.Command.Parameters.AddWithValue("@url", movie.ImgUrl);
+                sqlDao.Command.Parameters.AddWithValue("@title", entity.Title);
+                sqlDao.Command.Parameters.AddWithValue("@date", entity.Date);
+                sqlDao.Command.Parameters.AddWithValue("@rating", entity.Rating);
+                sqlDao.Command.Parameters.AddWithValue("@url", entity.ImgUrl);
+
 
                 SqlParameter param = new SqlParameter();
                 param.ParameterName = "@idMovie";
                 param.SqlDbType = SqlDbType.Int;
                 param.Direction = ParameterDirection.Output;
                 sqlDao.Command.Parameters.Add(param);
-
-                sqlDao.Command.ExecuteNonQuery();
-
+                await sqlDao.Command.ExecuteNonQueryAsync();
                 int idMovie = (int)param.Value;
 
-                movie.Id = idMovie;
-
-               // ------insert Characters------ -
-                foreach (Character c in movie.Characters)
-                {
-                    sqlDao.Command.Parameters.Clear();
-                    sqlDao.Command.CommandText = "sp_addCharactersToMovie";
-                    sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                    sqlDao.Command.Transaction = transact;
-                    sqlDao.Command.Parameters.AddWithValue("@idMovie", movie.Id);
-                    sqlDao.Command.Parameters.AddWithValue("@idCharacter", c.Id);
-                    sqlDao.Command.ExecuteNonQuery();
-                }
-                // ------insert Genders------ -
-                foreach (Gender g in movie.Genders)
-                {
-                    sqlDao.Command.Parameters.Clear();
-                    sqlDao.Command.CommandText = "sp_addMovieGenders";
-                    sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                    sqlDao.Command.Transaction = transact;
-                    sqlDao.Command.Parameters.AddWithValue("@idMovie", movie.Id);
-                    sqlDao.Command.Parameters.AddWithValue("@idGender", g.Id);
-                    sqlDao.Command.ExecuteNonQuery();
-                }
-                transact.Commit();
-                flag = true;
+                await CreateCharactersAndGenders(idMovie, entity.Characters, entity.Genders, transact); 
+                if(await sqlDao.CreateWithTransactAsync(transact)) flag = true; 
                 return flag;
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            finally
-            {
-                sqlDao.CloseConn();
-            }
+            catch (Exception ex) { throw ex;}
         }
 
-        public void update(int id, Movie objectToUpdate)
+        public async Task<bool> CreateAsync(string commandText, Dictionary<string, object> parameters)
         {
-            try
-            {
-                sqlDao.OpenConn();
-                sqlDao.Command = sqlDao.Conn.CreateCommand();
-                sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                sqlDao.Command.CommandText = "sp_UpdateMovie";
-                sqlDao.Command.Parameters.AddWithValue("@idMovie", id);
-                sqlDao.Command.Parameters.AddWithValue("@title", objectToUpdate.Title);
-                sqlDao.Command.Parameters.AddWithValue("@date", objectToUpdate.Date);
-                sqlDao.Command.Parameters.AddWithValue("@rating", objectToUpdate.Rating);
-                sqlDao.Command.Parameters.AddWithValue("@url", objectToUpdate.ImgUrl);
-                sqlDao.Command.ExecuteNonQuery();
-            }
-
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            finally
-            {
-                sqlDao.CloseConn();
-            }
+            throw new NotImplementedException();
         }
 
-        public void Delete(int id)
+        public async Task<bool> DeleteAsync(string CommandText, object id)
         {
-            try
-            {
-                sqlDao.OpenConn();
-                sqlDao.Command = sqlDao.Conn.CreateCommand();
-                sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                sqlDao.Command.CommandText = "sp_DeleteMovie";
-                sqlDao.Command.Parameters.AddWithValue("@id", id);
-                sqlDao.Command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                throw ex; 
-            }
-            finally { sqlDao.CloseConn(); }
+            return await sqlDao.DeleteAsync(CommandText, id);
         }
 
-        public void update(Movie objectToUpdate)
+        public async Task<IEnumerable<Movie>> GetAllAsync(string commandText)
         {
-            try
+            var data = await sqlDao.GetAllAsync(commandText);
+            foreach (DataRow dt in data) 
             {
-                sqlDao.OpenConn();
-                sqlDao.Command = sqlDao.Conn.CreateCommand();
-                sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                sqlDao.Command.CommandText = "sp_UpdateMovie";
-                sqlDao.Command.Parameters.AddWithValue("@idMovie", objectToUpdate.Id);
-                sqlDao.Command.Parameters.AddWithValue("@title", objectToUpdate.Title);
-                sqlDao.Command.Parameters.AddWithValue("@date", objectToUpdate.Date);
-                sqlDao.Command.Parameters.AddWithValue("@rating", objectToUpdate.Rating);
-                sqlDao.Command.Parameters.AddWithValue("@url", objectToUpdate.ImgUrl);
-                //sqlDao.Command.Parameters.AddWithValue("@gender", objectToUpdate.IdGender);
-                sqlDao.Command.ExecuteNonQuery();
+                Movie movie = new Movie();
+                movie.Id = Convert.ToInt32(dt[0]); 
+                movie.Title = dt[1].ToString();
+                movie.Date = Convert.ToDateTime(dt[2]);
+                movie.Rating = Convert.ToInt32(dt[3]);
+                movie.ImgUrl = dt[4].ToString();
+                lst.Add(movie);
             }
-            catch (Exception ex)
+            return lst;
+        }
+
+        public async Task<IEnumerable<Movie>> GetByFilterAsync(string commandText, Dictionary<string, object> parameters)
+        {
+            var data = await sqlDao.GetByFilterAsync(commandText,parameters);
+            foreach (DataRow dt in data)
             {
-                throw ex;
+                Movie movie = new Movie();
+                movie.Id = Convert.ToInt32(dt[0]);
+                movie.Title = dt[1].ToString();
+                movie.Date = Convert.ToDateTime(dt[2]);
+                movie.Rating = Convert.ToInt32(dt[3]);
+                movie.ImgUrl = dt[4].ToString();
+                lst.Add(movie);
             }
-            finally
+            return lst;
+        }
+
+        public async Task<IEnumerable<Movie>> GetByFilterAsync(string commandText, string param, object value)
+        {
+            var data = await sqlDao.GetByFilterAsync(commandText, param, value);
+            foreach (DataRow dt in data)
             {
-                sqlDao.CloseConn();
+                Movie movie = new Movie();
+                movie.Id = Convert.ToInt32(dt[0]);
+                movie.Title = dt[1].ToString();
+                movie.Rating = Convert.ToInt32(dt[2]);
+                movie.Date = Convert.ToDateTime(dt[3]);
+                movie.ImgUrl = dt[4].ToString();
+                lst.Add(movie);
             }
+            return lst;
+        }
+
+        public async Task<bool> UpdateAsync(string commandText, Dictionary<string, object> parameters)
+        {
+            return await sqlDao.UpdateAsync(commandText, parameters);
         }
     }
 }

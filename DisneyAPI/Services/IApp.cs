@@ -1,23 +1,24 @@
 ﻿using DisneyAPI.Entities;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace DisneyAPI.Services
 {
-    public interface IApp
+    public interface IApp<T>
     {
-        IEnumerable<Character> ListAllCharacters();
-        IEnumerable<Character> FilterCharacter(Dictionary<string, object> parameters);
-        IEnumerable<Character> GetCharactersByMovie(object value);
-        IEnumerable<Movie> ListAllMovies();
-        IEnumerable<Movie> FilterMovies(Dictionary<string, object> parameters);
-        IEnumerable<Movie> GetMoviesByCharacter(object value);
-        IEnumerable<Gender> GetMovieGenders(object value); 
-        bool CreateMovie(Movie movie); 
-        bool CreateCharacter(Character character);
-        void UpdateMovie(int id,Movie movie);
-        void UpdateCharacter(Character c);
-        void DeleteMovie(int id);
-        void DeleteCharacter(int id);
+        public Task<IEnumerable<T>> GetAllAsync();
+        public Task<IEnumerable<T>> FilterAsync(Dictionary<string, object> parameters);
+        public Task<IEnumerable<T>> GetByValueAsync(string key,object value);
+        //public Task<IEnumerable<Movie>> ListAllMoviesAsync();
+        //public Task<IEnumerable<Movie>> FilterMoviesAsync(Dictionary<string, object> parameters);
+        //public Task<IEnumerable<Movie>> GetMoviesByCharacterAsync(object value);
+        //public Task<IEnumerable<Gender>> GetMovieGendersAsync(object value); 
+        //public Task<bool> CreateMovieAsync(Movie movie); 
+        public Task<bool> CreateAsync(T entity);
+        //public Task UpdateMovieAsync(int id,Movie movie);
+        public Task<bool> UpdateAsync(T entity);
+        //public Task DeleteMovieAsync(int id);
+        public Task DeleteAsync(object id);
 
     }
 }

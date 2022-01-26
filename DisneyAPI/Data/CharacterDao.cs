@@ -2,157 +2,102 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace DisneyAPI.Data
 {
     public class CharacterDao : IDao<Character>
     {
         private SqlRepo sqlDao;
+        private List<Character> lst;
 
         public CharacterDao()
         {
             sqlDao = SqlRepo.GetDao();
+            lst = new List<Character>();
         }
-        public IEnumerable<Character> GetByFilter(string commandText, Dictionary<string, object> parameters)
+
+        async public Task<bool> CreateAsync(string command, Dictionary<string, object> parameters)
         {
-            DataTable dt = sqlDao.GetByFilter(commandText,parameters);
-            List<Character> lst = new List<Character>();
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                Character c = new Character();
-                c.Id = Convert.ToInt32(dt.Rows[i][0]);
-                c.Name = dt.Rows[i][1].ToString();
-                c.Age = Convert.ToInt32(dt.Rows[i][2]);
-                c.Weight = Convert.ToDecimal(dt.Rows[i][3]);
-                c.Story = dt.Rows[i][4].ToString();
-                c.ImgUrl = dt.Rows[i][5].ToString();
-
-                lst.Add(c);
-            }
-            return lst;
+            return await sqlDao.CreateAsync(command,parameters);
         }
 
-        public IEnumerable<Character> GetByFilter(string commandText, string param, object value)
-        {
-            DataTable dt = sqlDao.GetByFilter(commandText, param, value);
-            List<Character> lst = new List<Character>();
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                Character c = new Character();
-                c.Id = Convert.ToInt32(dt.Rows[i][0]);
-                c.Name = dt.Rows[i][1].ToString();
-                c.Age = Convert.ToInt32(dt.Rows[i][2]);
-                c.Weight = Convert.ToDecimal(dt.Rows[i][3]);
-                c.Story = dt.Rows[i][4].ToString();
-                c.ImgUrl = dt.Rows[i][5].ToString();
-
-                lst.Add(c);
-            }
-            return lst;
-        }
-
-        public IEnumerable<Character> GetAll(string commandText)
-        {
-            DataTable dt = sqlDao.GetAll(commandText);
-            List<Character> lst = new List<Character>();
-            for (int i = 0; i < dt.Rows.Count; i++)
-            {
-                Character c = new Character();
-                c.Id = Convert.ToInt32(dt.Rows[i][0]);
-                c.Name = dt.Rows[i][1].ToString();
-                c.Age = Convert.ToInt32(dt.Rows[i][2]);
-                c.Weight = Convert.ToDecimal(dt.Rows[i][3]);
-                c.Story = dt.Rows[i][4].ToString();
-                c.ImgUrl = dt.Rows[i][5].ToString();
-                lst.Add(c);
-            }
-            return lst;
-        }
-
-        public bool Create(Character character)
-        {
-            bool flag = false;
-            try
-            {
-                sqlDao.OpenConn();
-
-                sqlDao.Command = sqlDao.Conn.CreateCommand();
-                sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                sqlDao.Command.CommandText = "sp_createCharacter";
-
-                sqlDao.Command.Parameters.AddWithValue("@name", character.Name);
-                sqlDao.Command.Parameters.AddWithValue("@age", character.Age);
-                sqlDao.Command.Parameters.AddWithValue("@weight", character.Weight);
-                sqlDao.Command.Parameters.AddWithValue("@story", character.Story);
-                sqlDao.Command.Parameters.AddWithValue("@imgUrl", character.ImgUrl);
-
-                int affRow = sqlDao.Command.ExecuteNonQuery();
-
-                if (affRow > 0) { flag = true;}
-                return flag;
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            finally
-            {
-                sqlDao.CloseConn();
-            }
-        }
-
-        public bool update(int id, Character objectToUpdate)
+        public Task<bool> CreateAsync(SqlTransaction transc, string commandText, Dictionary<string, object> parameters)
         {
             throw new NotImplementedException();
         }
 
-        void IDao<Character>.update(int id, Character objectToUpdate)
+        public Task<bool> CreateAsync(Character entity)
         {
             throw new NotImplementedException();
         }
 
-        public void Delete(int id)
+        public Task<bool> CreateAsync(SqlTransaction transc)
         {
-            try
-            {
-                sqlDao.OpenConn();
-                sqlDao.Command = sqlDao.Conn.CreateCommand();
-                sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                sqlDao.Command.CommandText = "sp_DeleteCharacter";
-                sqlDao.Command.Parameters.AddWithValue("@id", id);
-                sqlDao.Command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            finally { sqlDao.CloseConn(); }
+            throw new NotImplementedException();
         }
 
-        public void update(Character objectToUpdate)
+        async public Task<bool> DeleteAsync(string CommandText, object id)
         {
-            try
+            return await sqlDao.DeleteAsync(CommandText, id);
+        }
+
+        async public Task<IEnumerable<Character>> GetAllAsync(string commandText)
+        {
+            var data = await sqlDao.GetAllAsync(commandText);
+
+            foreach (DataRow dt in data) 
             {
-                sqlDao.OpenConn();
-                sqlDao.Command = sqlDao.Conn.CreateCommand();
-                sqlDao.Command.CommandType = CommandType.StoredProcedure;
-                sqlDao.Command.CommandText = "sp_UpdateCharacter";
-                sqlDao.Command.Parameters.AddWithValue("@id", objectToUpdate.Id);
-                sqlDao.Command.Parameters.AddWithValue("@name", objectToUpdate.Name);
-                sqlDao.Command.Parameters.AddWithValue("@age", objectToUpdate.Age);
-                sqlDao.Command.Parameters.AddWithValue("@weight", objectToUpdate.Weight);
-                sqlDao.Command.Parameters.AddWithValue("@story", objectToUpdate.Story);
-                sqlDao.Command.Parameters.AddWithValue("@imgurl", objectToUpdate.ImgUrl);
-                sqlDao.Command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
+                Character character = new Character();
+                character.Id = Convert.ToInt32(dt[0]);
+                character.Name = dt[1].ToString();
+                character.Age = Convert.ToInt32(dt[2]);
+                character.Weight = Convert.ToInt32(dt[3]);
+                character.Story = dt[4].ToString();
+                character.ImgUrl = dt[5].ToString();
+                lst.Add(character);
+            }    
+            return lst;
+        }
+
+        async public Task<IEnumerable<Character>> GetByFilterAsync(string commandText, Dictionary<string, object> parameters)
+        {
+            var data = await sqlDao.GetByFilterAsync(commandText, parameters);
+            foreach (DataRow dt in data)
             {
-                throw ex;
+                Character character = new Character();
+                character.Id = Convert.ToInt32(dt[0]);
+                character.Name = dt[1].ToString();
+                character.Age = Convert.ToInt32(dt[2]);
+                character.Weight = Convert.ToInt32(dt[3]);
+                character.Story = dt[4].ToString();
+                character.ImgUrl = dt[5].ToString();
+                lst.Add(character);
             }
-            finally
+            return lst;
+        }
+
+        async public Task<IEnumerable<Character>> GetByFilterAsync(string commandText, string param, object value)
+        {
+            var data = await sqlDao.GetByFilterAsync(commandText, param, value);
+            foreach (DataRow dt in data)
             {
-                sqlDao.CloseConn();
+                Character character = new Character();
+                character.Id = Convert.ToInt32(dt[0]);
+                character.Name = dt[1].ToString();
+                character.Age = Convert.ToInt32(dt[2]);
+                character.Weight = Convert.ToInt32(dt[3]);
+                character.Story = dt[4].ToString();
+                character.ImgUrl = dt[5].ToString();
+                lst.Add(character);
             }
+            return lst;
+        }
+
+        async public Task<bool> UpdateAsync(string commandText, Dictionary<string, object> parameters)
+        {
+            return await sqlDao.UpdateAsync(commandText, parameters);
         }
     }
 }

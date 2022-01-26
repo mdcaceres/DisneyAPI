@@ -5,6 +5,7 @@ using DisneyAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DisneyAPI.Controllers
 {
@@ -12,128 +13,104 @@ namespace DisneyAPI.Controllers
     [ApiController]
     public class CharactersController : ControllerBase
     {
-        private IApp app;
+        private IApp<Character> app;
         private Dictionary<string, object> filter;
         public CharactersController()
         {
-            app = new App(new Factory());
+            app = new CharactersService(new Factory());
             filter = new Dictionary<string, object>();
         }
 
         [HttpGet]
-        public ActionResult GetCharacters()
+        public async Task<ActionResult> GetCharacters()
         {
-            var lst = app.ListAllCharacters().Select(item => new CharacterDto
+            var lst = await app.GetAllAsync();
+            var CharacterDtoLst = lst.Select(item => new CharacterDto
             {
                 Name = item.Name,
                 ImgUrl = item.ImgUrl
             });
-
-            return Ok(lst);
+            return Ok(CharacterDtoLst);
         }
 
         [HttpGet("Details")]
-        public ActionResult GetCharactersDet()
+        public async Task<ActionResult> GetCharactersDet()
         {
-            List<CharacterDetailsDto> characters = new List<CharacterDetailsDto>();
-            var lst = app.ListAllCharacters();
-            foreach (var item in lst)
+            var lst = await app.GetAllAsync();
+            var characters = lst.Select(item => new CharacterDetailsDto
             {
-                CharacterDetailsDto cdet = new CharacterDetailsDto();
-                cdet.Id = item.Id;
-                cdet.Name = item.Name;
-                cdet.Age = item.Age;
-                cdet.Weight = item.Weight;
-                cdet.Story = item.Story;
-                cdet.ImgUrl = item.ImgUrl;
-                cdet.Movies = new List<MovieDto>();
-                var movieLst = app.GetMoviesByCharacter(cdet.Id);
-                foreach (var movie in movieLst)
-                {
-                    MovieDto movieDto = new MovieDto();
-                    movieDto.Title = movie.Title;
-                    movieDto.Date = movie.Date;
-                    movieDto.ImgUrl = movie.ImgUrl;
-                    cdet.Movies.Add(movieDto);
-                }
-                characters.Add(cdet);
-            }
+                Id = item.Id,
+                Name = item.Name,
+                Age = item.Age,
+                Weight = item.Weight,
+                Story = item.Story,
+                ImgUrl = item.ImgUrl,
+                //Movies = new List<MovieDto>() { }
+            }); 
 
             return Ok(characters);
         }
 
         [HttpGet("name={name}")]
-        public ActionResult GetByName(string name)
+        public async Task<ActionResult> GetByName(string name)
         {
             filter.Clear();
             filter.Add("@name", name);
-            var lst = app.FilterCharacter(filter).Select(item => new CharacterDto
-            {
-                Name = item.Name,
-                ImgUrl = item.ImgUrl
-            });
-            return Ok(lst);
+            var lst = await app.FilterAsync(filter);
+            var characters = lst.Select(item => new CharacterDto { Name = item.Name , ImgUrl = item.ImgUrl});
+            return Ok(characters);
         }
 
         [HttpGet("age={age}")]
-        public ActionResult GetByAge(int age)
+        public async Task<ActionResult> GetByAge(int age)
         {
             filter.Clear();
             filter.Add("@age", age);
-            var lst = app.FilterCharacter(filter).Select(item => new CharacterDto
-            {
-                Name = item.Name,
-                ImgUrl = item.ImgUrl
-            });
-            return Ok(lst);
+            var lst = await app.FilterAsync(filter);
+            var characters = lst.Select(item => new CharacterDto { Name = item.Name, ImgUrl = item.ImgUrl });
+            return Ok(characters);
         }
 
         [HttpGet("weight={weight}")]
-        public ActionResult GetByWeight(decimal weight)
+        public async Task<ActionResult> GetByWeight(decimal weight)
         {
             filter.Clear();
             filter.Add("@weight", weight);
-            var lst = app.FilterCharacter(filter).Select(item => new CharacterDto
-            {
-                Name = item.Name,
-                ImgUrl = item.ImgUrl
-            });
-            return Ok(lst);
+            var lst = await app.FilterAsync(filter);
+            var characters = lst.Select(item => new CharacterDto { Name = item.Name, ImgUrl = item.ImgUrl });
+            return Ok(characters);
         }
 
         [HttpGet("Movie={idMovie}")]
-        public ActionResult GetByMovieId(int idMovie)
+        public async Task<ActionResult> GetByMovieId(int idMovie)
         {
             filter.Clear();
             filter.Add("@idMovie", idMovie);
-            var lst = app.FilterCharacter(filter).Select(item => new CharacterDto
-            {
-                Name = item.Name,
-                ImgUrl = item.ImgUrl
-            });
-            return Ok(lst);
+            var lst = await app.FilterAsync(filter);
+            var characters = lst.Select(item => new CharacterDto { Name = item.Name, ImgUrl = item.ImgUrl });
+            return Ok(characters);
         }
 
         [HttpPost("Create")]
-        public ActionResult Create(CreateCharacDto cc) 
+        public ActionResult Create(CreateCharacDto cc)
         {
-            Character c = new Character(cc.Name,cc.Age,cc.Weight,cc.Story,cc.ImgUrl);
-            app.CreateCharacter(c);
-            return CreatedAtAction(nameof(GetCharacters), cc); 
+            Character c = new Character(cc.Name, cc.Age, cc.Weight, cc.Story, cc.ImgUrl);
+            app.CreateAsync(c);
+            return CreatedAtAction(nameof(GetCharacters), cc);
         }
 
         [HttpPut("Update")]
-        public ActionResult Update(int id,UpdatedCharacDto updated)
+        public async Task<ActionResult> Update(int id, UpdatedCharacDto updated)
         {
-            Character c = new Character(id,updated.Name, updated.Age, updated.Weight, updated.Story, updated.ImgUrl);
-            app.UpdateCharacter(c);
+            Character c = new Character(id, updated.Name, updated.Age, updated.Weight, updated.Story, updated.ImgUrl);
+            await app.UpdateAsync(c);
             return Ok("Character Updated");
         }
 
         [HttpDelete("Delete")]
-        public ActionResult Delete(int id)
+        public async Task<ActionResult> Delete(int id)
         {
-            app.DeleteCharacter(id);
+            await app.DeleteAsync(id);
             return Ok("Character Deleted");
         }
     }
